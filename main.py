@@ -9,14 +9,19 @@ from torchvision import datasets, transforms
 
 from transformers import BertTokenizer, BertForSequenceClassification, AdamW, get_linear_schedule_with_warmup
 
+import random
+
 
 # -----------------------------------------------------------
 
 class IMDB_Dataset(torch.utils.data.Dataset):
-    def __init__(self, src_file, tokenizer, max_length=512):
+    def __init__(self, src_file, tokenizer, max_length=512, subset_size=None):
         self.tokenizer = tokenizer
         self.max_length = max_length
         df = pd.read_csv(src_file, usecols=['sentiment', 'review'])
+        
+        if subset_size is not None:
+            df = df.sample(n=subset_size, random_state=42)  # For reproducibility
         
         self.labels = torch.tensor(df['sentiment'].values, dtype=torch.long)
         self.reviews = df['review'].values
@@ -32,14 +37,9 @@ class IMDB_Dataset(torch.utils.data.Dataset):
                                   max_length=self.max_length)
         
         return {
-            #The encoded version of reviews
-            'input_ids': encoding['input_ids'].squeeze(0),  
-
-            #Sequence of 1 and 0 indicating which token in input_ids 
-            #should be looked at or ignored
-            'attention_mask': encoding['attention_mask'].squeeze(0), 
-
-            'label': self.labels[idx]
+            'input_ids': encoding['input_ids'].squeeze(0),
+            'attention_mask': encoding['attention_mask'].squeeze(0),
+            'labels': self.labels[idx] - 1  # Adjust labels to 0 and 1
         }
 
 
@@ -53,7 +53,7 @@ def simple_tokenizer(review, max_length):
 def main():
     # 0. get started
     print("\nBegin PyTorch IMDB Transformer Architecture demo ")
-    print("Using only reviews with 50 or less words ")
+    print("\nUsing only reviews with 50 or less words ")
     torch.manual_seed(1)
     np.random.seed(1)
 
@@ -67,19 +67,20 @@ def main():
     # 1. load data 
     print("\nLoading preprocessed train and test data ")
     train_file = "./data/imdb_train.csv"
-    train_ds = IMDB_Dataset(train_file, tokenizer) 
+    train_ds = IMDB_Dataset(train_file, tokenizer, subset_size = 1000); 
     test_file = "./data/imdb_test.csv"
-    test_ds = IMDB_Dataset(test_file, tokenizer)
+    test_ds = IMDB_Dataset(test_file, tokenizer, subset_size=1000);
     
-    # print("\nDisplaying first 3 samples from training data:")
-    # for i in range(3):
+    # print("\nDisplaying first 10 samples from training data:")
+    # for i in range(10):
     #     sample = train_ds[i]
     #     print(f"Sample {i}:")
-    #     print(f"Label: {'Positive' if sample['label'] == 1 else 'Negative'}")
-    #     print(f"InputId: {sample['input_ids']}")
+    #     print(f"Label: {'Positive' if sample['labels'] == 1 else 'Negative'}")
+    #     # print(f"InputId: {sample['input_ids']}")
     #     print()
 
     bat_size = 20
+    # train_ldr = DataLoader(train_ds, batch_size=bat_size, shuffle=True, drop_last=True, num_workers=1)
     train_ldr = DataLoader(train_ds, batch_size=bat_size, shuffle=True, drop_last=True)
     test_ldr = DataLoader(test_ds, batch_size=bat_size, shuffle=False, drop_last=False)
 
@@ -87,8 +88,45 @@ def main():
     n_test = len(test_ds)
     print("Num train = %d Num test = %d " % (n_train, n_test))
 
-
     #READY to train model
+    print("\nStart training model")
+
+    #TODO: Make sure this model works as intended
+    optimizer = torch.optim.AdamW(model.parameters(), lr=2e-5)
+    # optimizer = AdamW(model.parameters(), lr=2e-5)
+
+    model.train()  # Set the model to training mode
+
+    for epoch in range(2):  # Example: loop over the dataset 2 times
+        total_loss = 0
+        for step, batch in enumerate(train_ldr):
+            print("\nLoading Batch")
+            # Reset gradients
+            model.zero_grad()
+
+            # Retrieve input data; adjust labels
+            input_ids = batch['input_ids'].to(device)
+            attention_mask = batch['attention_mask'].to(device)
+            labels = batch['labels'].to(device)
+
+            # Forward pass
+            outputs = model(input_ids, attention_mask=attention_mask, labels=labels)
+
+            # Calculate loss
+            loss = outputs.loss
+            total_loss += loss.item()
+
+            # Backward pass to calculate gradients
+            loss.backward()
+
+            # Update model parameters
+            optimizer.step()
+
+        # Print average loss for the epoch
+        avg_loss = total_loss / len(train_ldr)
+        print(f"Epoch {epoch+1} average loss: {avg_loss:.4f}")
+
+    #TODO: Store model parameters
 
     print("\nEnd")
 
