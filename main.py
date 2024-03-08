@@ -69,7 +69,7 @@ def main():
     train_file = "./data/imdb_train.csv"
     train_ds = IMDB_Dataset(train_file, tokenizer, subset_size = 1000); 
     test_file = "./data/imdb_test.csv"
-    test_ds = IMDB_Dataset(test_file, tokenizer, subset_size=1000);
+    test_ds = IMDB_Dataset(test_file, tokenizer, subset_size = 1000);
     
     # print("\nDisplaying first 10 samples from training data:")
     # for i in range(10):
@@ -126,7 +126,12 @@ def main():
         avg_loss = total_loss / len(train_ldr)
         print(f"Epoch {epoch+1} average loss: {avg_loss:.4f}")
 
-    #TODO: Store model parameters
+    model_save_path = './imdb_model/trained_model_state_dict.pth'
+    torch.save(model.state_dict(), model_save_path)
+    print(f"Model parameters saved to {model_save_path}")
+
+    #TODO: implement testing loop or keep training, also research on how to use stored parameters
+
 
     print("\nEnd")
 
