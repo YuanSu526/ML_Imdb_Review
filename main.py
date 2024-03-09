@@ -119,9 +119,6 @@ def main():
     torch.save(model.state_dict(), model_save_path)
     print(f"Model parameters saved to {model_save_path}")
 
-    #TODO: implement testing loop or keep training, also research on how to use stored parameters
-
-
     print("\nEnd")
 
 if __name__ == "__main__":
