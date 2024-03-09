@@ -51,13 +51,12 @@ def simple_tokenizer(review, max_length):
 # -----------------------------------------------------------
 
 def main():
-    # 0. get started
+    # 0. Initialize model
     print("\nBegin PyTorch IMDB Transformer Architecture demo ")
     print("\nUsing only reviews with 50 or less words ")
     torch.manual_seed(1)
     np.random.seed(1)
 
-    #Initialize model
     print("\nInitializing model ")
     tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
     model = BertForSequenceClassification.from_pretrained('bert-base-uncased', num_labels=2)  # Binary classification
@@ -68,39 +67,29 @@ def main():
     print("\nLoading preprocessed train and test data ")
     train_file = "./data/imdb_train.csv"
     train_ds = IMDB_Dataset(train_file, tokenizer, subset_size = 1000); 
-    test_file = "./data/imdb_test.csv"
-    test_ds = IMDB_Dataset(test_file, tokenizer, subset_size = 1000);
-    
-    # print("\nDisplaying first 10 samples from training data:")
-    # for i in range(10):
-    #     sample = train_ds[i]
-    #     print(f"Sample {i}:")
-    #     print(f"Label: {'Positive' if sample['labels'] == 1 else 'Negative'}")
-    #     # print(f"InputId: {sample['input_ids']}")
-    #     print()
 
     bat_size = 20
     # train_ldr = DataLoader(train_ds, batch_size=bat_size, shuffle=True, drop_last=True, num_workers=1)
     train_ldr = DataLoader(train_ds, batch_size=bat_size, shuffle=True, drop_last=True)
-    test_ldr = DataLoader(test_ds, batch_size=bat_size, shuffle=False, drop_last=False)
 
     n_train = len(train_ds)
-    n_test = len(test_ds)
-    print("Num train = %d Num test = %d " % (n_train, n_test))
+    print("Num train = %d Num test = %d " % (n_train))
 
     #READY to train model
     print("\nStart training model")
 
-    #TODO: Make sure this model works as intended
     optimizer = torch.optim.AdamW(model.parameters(), lr=2e-5)
-    # optimizer = AdamW(model.parameters(), lr=2e-5)
 
-    model.train()  # Set the model to training mode
+    model.train()
+
+    n_batch = 1
 
     for epoch in range(2):  # Example: loop over the dataset 2 times
         total_loss = 0
         for step, batch in enumerate(train_ldr):
-            print("\nLoading Batch")
+            print("\nLoading batch number %d" % (n_batch))
+            n_batch += 1
+
             # Reset gradients
             model.zero_grad()
 
